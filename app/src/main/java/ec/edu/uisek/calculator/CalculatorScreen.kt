@@ -36,8 +36,10 @@ import ec.edu.uisek.calculator.ui.theme.Purple80
 import ec.edu.uisek.calculator.ui.theme.UiSekBlue
 
 @Composable
-fun CalculatorScreen() {
-    var inputText by remember { mutableStateOf("") }
+fun CalculatorScreen(
+    viewModel: CalculatorViewModel = viewModel()
+) {
+    var state = viewModel.state
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -45,36 +47,25 @@ fun CalculatorScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.Center
     ) {
-        TextField(
-            value = inputText,
-            onValueChange = { inputText = it },
+        Text(
+            text = state.display,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp),
-            textStyle = LocalTextStyle.current.copy(
-                fontSize = 36.sp,
-                textAlign = TextAlign.End,
-                color = Color.White
-            ),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-                cursorColor = Color.White
-            ),
-            singleLine = true
+            fontSize = 56.sp,
+            textAlign = TextAlign.End,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1
         )
 
         // Aquí colocaremos la cuadrícula de botones
-        CalculatorGrid { label ->
-            inputText += label
-        }
+        CalculatorGrid (onEvent = viewModel::onEvent)
     }
 }
 
 @Composable
-fun CalculatorGrid(onButtonClick: (String) -> Unit) {
+fun CalculatorGrid(onEvent: (CalculatorEvent) -> Unit) {
     val buttons = listOf(
         "7", "8", "9", "÷",
         "4", "5", "6", "×",
@@ -92,7 +83,24 @@ fun CalculatorGrid(onButtonClick: (String) -> Unit) {
         items(buttons.size) { index ->
             val label = buttons[index]
             CalculatorButton(label = label) {
-                onButtonClick(label)
+                when (label){
+                    in "0" .. "9" -> onEvent(CalculatorEvent.Number( number = label ))
+                    "." -> onEvent(CalculatorEvent.Decimal)
+                    "=" -> onEvent(CalculatorEvent.Calculate)
+                    else -> onEvent(CalculatorEvent.Operator(label))
+                }
+            }
+        }
+
+        item(spam = {GridItemSpam(currentLiveSpam = 2)}) {
+            CalculatorButton(label = "AC") {
+                onEvent(CalculatorEvent.AllClear)
+            }
+        }
+
+        item(spam = {GridItemSpam(currentLiveSpam = 2)}) {
+            CalculatorButton(label = "C") {
+                onEvent(CalculatorEvent.Clear)
             }
         }
     }
@@ -103,14 +111,14 @@ fun CalculatorGrid(onButtonClick: (String) -> Unit) {
 fun CalculatorButton(label: String, onClick: () -> Unit) {
     Box (
         modifier = Modifier
-            .aspectRatio(1f)
+            .aspectRatio(if (label == "AC" || label == "C") 2f else 1f)
             .fillMaxSize()
             .clip(CircleShape)
-            .background(if (label in listOf("÷", "×", "−", "+", "=", "."))
-                Purple40
-                else
-                UiSekBlue
-            )
+            .background(when (label) {
+                in listOf("÷", "×", "−", "+", "=", ".") -> Purple40
+                in listOf("AC", "C") -> Red
+                else -> UiSekBlue
+            })
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ){
